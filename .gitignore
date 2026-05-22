@@ -1,0 +1,19 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.env
+
+# Barcode orchestrator runtime artifacts
+state.jsonld.lock
+fnsr.pid
+fnsr_test.pid
+
+# Claude Code operator-local settings
+.claude/settings.json
+
+# Add subject-project-specific entries below per your language
+# (e.g., node_modules/, __pycache__/, target/, .venv/, dist/)
+
+# Python bytecode
+__pycache__/
+*.pyc

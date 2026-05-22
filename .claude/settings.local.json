@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(git mv:*)",
+      "Bash(npm test:*)",
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(npm install)",
+      "Bash(timeout 45 node:*)",
+      "Bash(node:*)",
+      "Bash(timeout 60 node:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 30 node:*)",
+      "Bash(Get-ExecutionPolicy -Scope CurrentUser)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell \"Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like ''*--remote-debugging-port*'' } | Select-Object Id, CommandLine | Format-List\")",
+      "Bash(set CI=true)",
+      "Bash(CI=true npm test)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(npm install:*)",
+      "Bash(node --test:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}
