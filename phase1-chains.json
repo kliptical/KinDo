@@ -1,0 +1,218 @@
+[
+  {
+    "@id": "urn:fnsr:task:p1-a1-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Investigate project/ for the Family Task Manager. Report: (1) every file/directory under project/ that is NOT one of the five canonical docs (family-task-manager-spec.md, ROADMAP.md, IMPLEMENTATION_PLAN.md, DECISIONS.md, README.md); (2) whether project/package.json exists; (3) whether project/src/ exists. If nothing exists beyond the docs, report that clearly."
+    },
+    "depends_on": [],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a1-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new files for Phase 1 of the Family Task Manager. JavaScript ESM, zero runtime dependencies. Use before: null (new file creation).\n\nFile 1 — project/package.json:\n{\"type\":\"module\",\"scripts\":{\"test\":\"node --test tests/phase1.test.js\"}}\n\nFile 2 — project/src/context.js:\nExport a named constant FTM_CONTEXT object (no default export) with exactly:\n  ftm: 'https://schema.familytaskmanager.local/v1/'\n  xsd: 'http://www.w3.org/2001/XMLSchema#'\n  schema: 'https://schema.org/'\nNo side effects. No I/O. No other exports needed.\n\nAcceptance criteria (IMPLEMENTATION_PLAN 1.1): FTM_CONTEXT.ftm/xsd/schema match exactly; module has zero side effects on import."
+    },
+    "depends_on": ["urn:fnsr:task:p1-a1-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a1-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-a1-dev"},
+    "depends_on": ["urn:fnsr:task:p1-a1-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a1-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-a1-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p1-a1-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p1-a2-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/context.js and project/package.json. Report their exact exports and structure. Also read SPEC §3.2 and §3.3 (lines 59-141 of project/family-task-manager-spec.md) covering TaskDefinition and TaskInstance schemas. Report file paths, line ranges, and all field names."
+    },
+    "depends_on": ["urn:fnsr:task:p1-a1-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a2-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new entity factory files. JavaScript ESM. No dependencies. before: null for both.\n\nFile 1 — project/src/entities/taskDefinition.js:\nExport createTaskDefinition(params) per SPEC §3.2.\nparams shape: { title, description, assignedTo, createdBy, dueAt, scheduleType='one-time', recurrenceRule=null, recurrenceStart=null, reminderMode='once', intervalSeconds=null, persistUntilSeconds=null }\nUse crypto.randomUUID() for @id (no import needed — available as globalThis.crypto.randomUUID() in Node 19+).\nReturn JSON-LD object with ALL fields from SPEC §3.2:\n  @context: 'https://schema.familytaskmanager.local/v1/'\n  @type: 'ftm:TaskDefinition'\n  @id: 'urn:ftm:task:' + crypto.randomUUID()\n  ftm:title, ftm:description, ftm:assignedTo, ftm:createdBy\n  ftm:createdAt: { '@type':'xsd:dateTime', '@value': new Date().toISOString() }\n  ftm:version: 1\n  ftm:updatedAt: { '@type':'xsd:dateTime', '@value': new Date().toISOString() }\n  ftm:clientSequence: 1\n  ftm:schedule: { '@type':'ftm:Schedule', 'ftm:scheduleType':params.scheduleType, 'ftm:dueAt':{'@type':'xsd:dateTime','@value':params.dueAt}, 'ftm:recurrenceRule':params.recurrenceRule, 'ftm:recurrenceStart':params.recurrenceStart }\n  ftm:reminderPolicy: { '@type':'ftm:ReminderPolicy', 'ftm:mode':params.reminderMode, 'ftm:intervalSeconds':params.intervalSeconds, 'ftm:persistUntilSeconds':params.persistUntilSeconds }\n  ftm:status: 'active'\n\nFile 2 — project/src/entities/taskInstance.js:\nExport createTaskInstance(params) per SPEC §3.3.\nparams shape: { taskDefinitionId, assignedTo, dueAt }\nReturn JSON-LD with ALL fields from SPEC §3.3:\n  @context: 'https://schema.familytaskmanager.local/v1/'\n  @type: 'ftm:TaskInstance'\n  @id: 'urn:ftm:instance:' + crypto.randomUUID()\n  ftm:taskDefinition: params.taskDefinitionId\n  ftm:assignedTo: params.assignedTo\n  ftm:dueAt: { '@type':'xsd:dateTime', '@value':params.dueAt }\n  ftm:createdAt: { '@type':'xsd:dateTime', '@value': new Date().toISOString() }\n  ftm:updatedAt: { '@type':'xsd:dateTime', '@value': new Date().toISOString() }\n  ftm:clientSequence: 1\n  ftm:completionState: { '@type':'ftm:CompletionState', 'ftm:status':'pending', 'ftm:completedAt':null, 'ftm:completedBy':null, 'ftm:completedByRole':null }\n  ftm:reminderSummary: { '@type':'ftm:ReminderSummary', 'ftm:totalSent':0, 'ftm:lastSentAt':null, 'ftm:lastDeliveryStatus':null, 'ftm:recentEvents':[] }\nNo I/O. No side effects."
+    },
+    "depends_on": ["urn:fnsr:task:p1-a2-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a2-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-a2-dev"},
+    "depends_on": ["urn:fnsr:task:p1-a2-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a2-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-a2-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p1-a2-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p1-a3-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/entities/taskDefinition.js and project/src/entities/taskInstance.js. Report their exact export signatures and field structure. Also read SPEC §3.4 and §3.5 (ReminderEvent and User schemas) from project/family-task-manager-spec.md. Report file paths and line ranges."
+    },
+    "depends_on": ["urn:fnsr:task:p1-a2-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a3-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new entity files matching the pattern established in taskDefinition.js and taskInstance.js. JavaScript ESM. No dependencies. before: null for both.\n\nFile 1 — project/src/entities/reminderEvent.js:\nExport createReminderEvent(sentAt, deliveryStatus) per SPEC §3.4.\nThrow an Error if deliveryStatus is not one of: 'delivered', 'failed', 'deferred'.\nReturn: { '@type':'ftm:ReminderEvent', 'ftm:sentAt':{'@type':'xsd:dateTime','@value':sentAt}, 'ftm:deliveryStatus':deliveryStatus }\n\nFile 2 — project/src/entities/user.js:\nExport createUser(params) per SPEC §3.5.\nparams shape: { role, displayName, notificationTokens=[] }\nThrow if role not in ['parent','child'].\nThrow if displayName is empty string or not a string.\nReturn:\n  @context: 'https://schema.familytaskmanager.local/v1/'\n  @type: 'ftm:User'\n  @id: 'urn:ftm:user:' + crypto.randomUUID()\n  ftm:role: params.role\n  ftm:displayName: params.displayName\n  ftm:notificationTokens: params.notificationTokens ?? []\nNo I/O. No side effects."
+    },
+    "depends_on": ["urn:fnsr:task:p1-a3-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a3-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-a3-dev"},
+    "depends_on": ["urn:fnsr:task:p1-a3-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-a3-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-a3-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p1-a3-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p1-b1-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read ALL files under project/src/ (context.js, entities/taskDefinition.js, entities/taskInstance.js, entities/reminderEvent.js, entities/user.js). Report exact export signatures and field names for each. Also read SPEC §11 (validation rules, lines 585-631 of project/family-task-manager-spec.md). Report file paths and line ranges."
+    },
+    "depends_on": ["urn:fnsr:task:p1-a3-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-b1-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new validation modules. JavaScript ESM. No dependencies. before: null for both.\n\nFile 1 — project/src/validation/validateTaskDefinition.js:\nExport validateTaskDefinition(td) returning { valid: boolean, errors: string[] }.\nValidate ALL §11 TaskDefinition rules (read SPEC §11 from UPSTREAM reconnaissance):\n- ftm:title must be a non-empty string with length <= 200; error: 'title must be non-empty string <= 200 chars'\n- If ftm:schedule['ftm:scheduleType'] === 'recurring': ftm:schedule['ftm:recurrenceRule'] must be non-null and non-empty; error: 'recurring task requires recurrenceRule'\n- If ftm:schedule['ftm:scheduleType'] === 'recurring': ftm:schedule['ftm:recurrenceStart'] must be non-null and non-empty; error: 'recurring task requires recurrenceStart'\n- If ftm:schedule['ftm:recurrenceStart'] is non-null: must be parseable as a date (new Date(v).toString() !== 'Invalid Date'); error: 'recurrenceStart must be valid ISO-8601 datetime'\n- If ftm:reminderPolicy['ftm:mode'] === 'persistent': ftm:reminderPolicy['ftm:intervalSeconds'] must be an integer >= 60; error: 'persistent mode requires intervalSeconds >= 60'\n- If ftm:reminderPolicy['ftm:persistUntilSeconds'] is non-null AND ftm:reminderPolicy['ftm:intervalSeconds'] is non-null: persistUntilSeconds must be >= intervalSeconds; error: 'persistUntilSeconds must be >= intervalSeconds'\n// TODO: assignedTo role check (SPEC §11) deferred to Phase 4 — requires StateAdapter.getUser() not available until Phase 3. Operator decision I10.\n\nFile 2 — project/src/validation/validateTaskInstance.js:\nExport validateTaskInstance(ti) returning { valid: boolean, errors: string[] }.\nValidate ALL §11 TaskInstance rules:\n- ftm:dueAt['@value'] must be a valid ISO-8601 datetime (parseable, not 'Invalid Date'); error: 'dueAt must be a valid ISO-8601 datetime'\n- ftm:clientSequence must be a positive integer (> 0, Number.isInteger, no decimals); error: 'clientSequence must be a positive integer'"
+    },
+    "depends_on": ["urn:fnsr:task:p1-b1-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-b1-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-b1-dev"},
+    "depends_on": ["urn:fnsr:task:p1-b1-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-b1-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-b1-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p1-b1-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p1-b2-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read all Phase 1 source files: project/src/context.js, project/src/entities/taskDefinition.js, project/src/entities/taskInstance.js, project/src/entities/reminderEvent.js, project/src/entities/user.js, project/src/validation/validateTaskDefinition.js, project/src/validation/validateTaskInstance.js. For each file report the exact export names and function signatures. Also read project/package.json. Report all file paths and line ranges."
+    },
+    "depends_on": ["urn:fnsr:task:p1-b1-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-b2-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new files. JavaScript ESM. No dependencies. before: null for both.\n\nFile 1 — project/src/utils/roundTrip.js:\nExport two functions per SPEC §2 and §3 (IMPLEMENTATION_PLAN 1.6):\n- stripFtmPrefix(entity): returns a NEW shallow-copy object where every key starting with 'ftm:' has the prefix removed (e.g. 'ftm:title' -> 'title'). Keys starting with '@' ('@context','@type','@id') are preserved unchanged. Does NOT mutate the input.\n- expandFtmPrefix(stripped): returns a NEW shallow-copy where every non-'@' key has 'ftm:' prepended (e.g. 'title' -> 'ftm:title'). '@' keys preserved unchanged. Does NOT mutate the input.\n\nFile 2 — project/tests/phase1.test.js:\nTest suite using Node.js built-in node:test. Import as: import { test, describe } from 'node:test'; import assert from 'node:assert/strict';\nAll imports use relative paths from tests/ (e.g. '../src/context.js').\n\nWrite describe blocks covering ALL acceptance criteria from IMPLEMENTATION_PLAN tasks 1.1-1.8:\n\ndescribe('1.1 context', ...) — assert FTM_CONTEXT.ftm/xsd/schema exact values\n\ndescribe('1.2 TaskDefinition factory', ...) covering:\n- @type === 'ftm:TaskDefinition'\n- @id matches /^urn:ftm:task:/\n- ftm:version === 1, ftm:clientSequence === 1, ftm:status === 'active'\n- one-time: ftm:schedule['ftm:scheduleType'] === 'one-time', recurrenceRule null, recurrenceStart null\n- recurring: ftm:schedule['ftm:scheduleType'] === 'recurring', recurrenceRule/Start non-null\n- once mode: ftm:reminderPolicy['ftm:mode'] === 'once', intervalSeconds null\n- no I/O (call factory twice, confirm two distinct @id values)\n\ndescribe('1.3 TaskInstance factory', ...) covering:\n- @type === 'ftm:TaskInstance', @id matches /^urn:ftm:instance:/\n- ftm:completionState['ftm:status'] === 'pending', completedAt/By/ByRole null\n- ftm:reminderSummary['ftm:totalSent'] === 0, recentEvents empty array\n- ftm:clientSequence === 1\n\ndescribe('1.4 ReminderEvent', ...) covering:\n- valid status 'delivered' accepted (no throw)\n- valid status 'failed' accepted\n- valid status 'deferred' accepted\n- invalid status 'unknown' throws\n\ndescribe('1.5 User factory', ...) covering:\n- @type === 'ftm:User'\n- ftm:role 'parent' accepted, 'child' accepted\n- ftm:displayName non-empty string stored\n- ftm:notificationTokens default is empty array\n\ndescribe('1.6 round-trip', ...) covering:\n- JSON.parse(JSON.stringify(td)) deep-equals original TaskDefinition\n- stripFtmPrefix then expandFtmPrefix round-trips to original (use assert.deepEqual)\n- '@context', '@type', '@id' survive both directions unchanged\n\ndescribe('1.7 validateTaskDefinition', ...) covering all AC from IMPLEMENTATION_PLAN 1.7:\n- empty title => errors.length > 0\n- title of 201 chars => errors.length > 0\n- title of 200 chars => no title error\n- recurring + recurrenceRule null => errors includes recurring rule error\n- recurring + recurrenceStart null => errors includes recurrenceStart error\n- recurring + recurrenceStart 'not-a-date' => errors includes datetime error\n- persistent + intervalSeconds 59 => errors.length > 0\n- persistent + intervalSeconds 60 => no intervalSeconds error\n- persistUntilSeconds 100, intervalSeconds 200 => errors.length > 0\n- persistUntilSeconds 200, intervalSeconds 200 => no persistUntilSeconds error\n- fully valid one-time TaskDefinition => valid === true, errors.length === 0\n\ndescribe('1.8 validateTaskInstance', ...) covering:\n- dueAt '@value' 'not-a-datetime' => errors.length > 0\n- clientSequence 0 => errors.length > 0\n- clientSequence -1 => errors.length > 0\n- clientSequence 1.5 => errors.length > 0\n- valid dueAt '2026-05-22T18:00:00Z' + clientSequence 1 => valid === true, no errors\n\nUse createTaskDefinition/createTaskInstance factories to build test fixtures where needed. Keep each test small and self-contained."
+    },
+    "depends_on": ["urn:fnsr:task:p1-b2-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-b2-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-b2-dev"},
+    "depends_on": ["urn:fnsr:task:p1-b2-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p1-b2-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p1-b2-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p1-b2-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p1-test",
+    "agent": "test-runner",
+    "status": "ready",
+    "inputs": {
+      "cmd": "node --test project/tests/phase1.test.js"
+    },
+    "depends_on": ["urn:fnsr:task:p1-b2-apply"],
+    "attempts": 0,
+    "history": []
+  }
+]

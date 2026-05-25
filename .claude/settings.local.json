@@ -27,7 +27,22 @@
       "Bash(git rm:*)",
       "Bash(npm install:*)",
       "Bash(node --test:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "PowerShell(node --test project/tests/phase1.test.js 2>&1)",
+      "PowerShell(python state_admin.py append-tasks phase2-chains.json)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld append-tasks C:\\\\repos\\\\KinDo\\\\phase2-chains.json)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld status)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py abandon --help)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld abandon urn:fnsr:task:p2-d-repair --reason \"orphaned by p2-d-dev token-limit failure; split-test recovery replaces\" --replaced-by \"urn:fnsr:task:p2-d1-repair,urn:fnsr:task:p2-d2-repair,urn:fnsr:task:p2-d3-repair\" --operator jhgiomundo)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld abandon urn:fnsr:task:p2-d-apply --reason \"orphaned by p2-d-dev token-limit failure; split-test recovery replaces\" --replaced-by \"urn:fnsr:task:p2-d1-apply,urn:fnsr:task:p2-d2-apply,urn:fnsr:task:p2-d3-apply\" --operator jhgiomundo)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld abandon urn:fnsr:task:p2-test --reason \"orphaned by p2-d-dev token-limit failure; replaced by p2-test-final after split-test recovery\" --replaced-by \"urn:fnsr:task:p2-test-final\" --operator jhgiomundo)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld append-tasks C:\\\\repos\\\\KinDo\\\\phase2-recovery-chains.json)",
+      "PowerShell(python C:\\\\repos\\\\KinDo\\\\state_admin.py --state-path C:\\\\repos\\\\KinDo\\\\state.jsonld append-tasks C:\\\\repos\\\\KinDo\\\\phase3-chains.json)",
+      "PowerShell(Get-Process | Where-Object { $_.Name -match \"node|claude|python\" } | Select-Object Id, Name, StartTime, @{N='RuntimeMin';E={[int]\\(\\(Get-Date\\) - $_.StartTime\\).TotalMinutes}} | Sort-Object StartTime)",
+      "PowerShell(Get-Process -Id 8716 -ErrorAction SilentlyContinue | Select-Object Id, Name, StartTime, Responding, @{N='CPUSeconds';E={[int]$_.CPU}}; Write-Output \"---\"; Get-WmiObject Win32_Process -Filter \"ParentProcessId=8716\" 2>$null | Select-Object ProcessId, Name, CommandLine)",
+      "PowerShell(Get-WmiObject Win32_Process -Filter \"ParentProcessId=17104\" 2>$null | Select-Object ProcessId, Name, CommandLine, @{N='CPU';E={\\(Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue\\).CPU}}; Write-Output \"---children-of-17104\"; Get-Process -Id 17104 -ErrorAction SilentlyContinue | Select-Object Id, Responding, @{N='CPUSec';E={[int]$_.CPU}}, StartTime)",
+      "PowerShell(Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -match \"claude|node\" -and $_.CommandLine -notmatch \"fleet|extension\" } 2>$null | Select-Object ProcessId, ParentProcessId, Name, @{N='Cmd';E={$_.CommandLine.Substring\\(0,[Math]::Min\\(120,$_.CommandLine.Length\\)\\)}}; Write-Output \"---\"; Get-Process -Id 17104 -ErrorAction SilentlyContinue | Select-Object Id, Responding, @{N='CPUSec';E={[int]$_.CPU}}, @{N='MemMB';E={[int]\\($_.WorkingSet64/1MB\\)}}, StartTime)",
+      "PowerShell(Get-Process -Id 17104 -ErrorAction SilentlyContinue | Format-List Id, Name, StartTime, Responding, CPU, WorkingSet64; Write-Output \"---all-claude-procs---\"; Get-Process | Where-Object { $_.Name -match \"claude\" } | Select-Object Id, Name, StartTime; Write-Output \"---all-node-procs---\"; Get-Process | Where-Object { $_.Name -match \"node\" } | Select-Object Id, Name, StartTime, @{N='Path';E={$_.Path}})"
     ]
   }
 }

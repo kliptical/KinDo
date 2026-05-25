@@ -1,0 +1,177 @@
+[
+  {
+    "@id": "urn:fnsr:task:p2-a-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read the following files and report their exact export signatures and key logic: project/src/entities/taskDefinition.js, project/src/entities/taskInstance.js, project/src/context.js. Also read SPEC §4.1 (ScheduleComputer, lines 176-198) from project/family-task-manager-spec.md. Report file paths and line ranges."
+    },
+    "depends_on": [],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-a-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create one new file for Phase 2 of the Family Task Manager. JavaScript ESM. before: null (new file).\n\nFile — project/src/modules/scheduleComputer.js:\nExport scheduleComputer(taskDef, referenceTime, options) per SPEC §4.1.\n\nSignature:\n  scheduleComputer(taskDef, referenceTime, options = {})\n  -> TaskInstance[]\n\nWhere:\n  taskDef: a TaskDefinition JSON-LD object (from createTaskDefinition)\n  referenceTime: ISO-8601 string\n  options.lookAheadSeconds: number (default 604800 = 7 days)\n\nDependencies:\n  import { RRule } from 'rrule';\n  import { createTaskInstance } from '../entities/taskInstance.js';\n\nRules (SPEC §4.1):\n1. If scheduleType === 'one-time':\n   - If dueAt['@value'] <= referenceTime: return []\n   - Else: return [createTaskInstance({ taskDefinitionId: taskDef['@id'], assignedTo: taskDef['ftm:assignedTo'], dueAt: taskDef['ftm:schedule']['ftm:dueAt']['@value'] })]\n\n2. If scheduleType === 'recurring':\n   - Try to parse recurrenceRule. On any parse error, return a result array with result['ftm:error'] = 'invalid-rrule' (attach to the array object, per operator I3 resolution). Use try/catch around RRule.fromString().\n   - Create the RRule: RRule.fromString(recurrenceRule) — note rrule v3 parses DTSTART from the rule string or accepts dtstart option. Set dtstart from recurrenceStart: const rule = new RRule({ ...RRule.parseString(recurrenceRule), dtstart: new Date(taskDef['ftm:schedule']['ftm:recurrenceStart']) });\n   - Enumerate occurrences in window (referenceTime, referenceTime + lookAheadSeconds]:\n     const start = new Date(referenceTime);\n     const end = new Date(new Date(referenceTime).getTime() + lookAheadSeconds * 1000);\n     const dates = rule.between(start, end, true); // inclusive upper bound\n     Filter out any date exactly equal to start (to satisfy open-start SPEC convention).\n   - Return dates.map(d => createTaskInstance({ taskDefinitionId: taskDef['@id'], assignedTo: taskDef['ftm:assignedTo'], dueAt: d.toISOString() }))\n   - If no occurrences: return []\n\n3. All returned instances must have completionState.status: 'pending' and reminderSummary.totalSent: 0 (guaranteed by createTaskInstance defaults).\n\n4. Function must be pure: no I/O, no side effects. Calling twice with same args produces same logical output (UUIDs will differ — that is acceptable).\n\nEdge cases:\n- If recurrenceRule is null/empty string and scheduleType is 'recurring', treat as invalid-rrule.\n- lookAheadSeconds defaults to 604800 when options is omitted or options.lookAheadSeconds is undefined."
+    },
+    "depends_on": ["urn:fnsr:task:p2-a-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-a-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-a-dev"},
+    "depends_on": ["urn:fnsr:task:p2-a-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-a-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-a-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p2-a-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p2-b-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/entities/taskInstance.js and project/src/modules/scheduleComputer.js. Report their exact export signatures. Also read SPEC §4.2 (ReminderEvaluator, lines 199-220) and §4.3 (CompletionProcessor, lines 221-243) from project/family-task-manager-spec.md. Report all file paths and line ranges."
+    },
+    "depends_on": ["urn:fnsr:task:p2-a-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-b-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new module files. JavaScript ESM. No new dependencies beyond what is already in project/node_modules. before: null for both.\n\nFile 1 — project/src/modules/reminderEvaluator.js:\nExport reminderEvaluator(instance, taskDef, currentTime) per SPEC §4.2.\nReturns { shouldRemind: boolean, reason: string }.\n\nRules in order (SPEC §4.2):\n1. If instance['ftm:completionState']['ftm:status'] === 'completed': return { shouldRemind: false, reason: 'already-complete' }\n2. If instance['ftm:dueAt']['@value'] > currentTime: return { shouldRemind: false, reason: 'not-yet-due' }\n3. const mode = taskDef['ftm:reminderPolicy']['ftm:mode'];\n4. If mode === 'once':\n   - If instance['ftm:reminderSummary']['ftm:totalSent'] === 0: return { shouldRemind: true, reason: 'first-and-only' }\n   - Else: return { shouldRemind: false, reason: 'once-sent' }\n5. If mode === 'persistent':\n   - Resolve persistUntilSeconds: taskDef['ftm:reminderPolicy']['ftm:persistUntilSeconds'] ?? 86400\n   - const dueAtMs = new Date(instance['ftm:dueAt']['@value']).getTime();\n   - const currentMs = new Date(currentTime).getTime();\n   - If currentMs > dueAtMs + persistUntilSeconds * 1000: return { shouldRemind: false, reason: 'persistence-window-expired' }\n   - If instance['ftm:reminderSummary']['ftm:totalSent'] === 0: return { shouldRemind: true, reason: 'initial-reminder' }\n   - If instance['ftm:reminderSummary']['ftm:lastDeliveryStatus'] === 'failed': return { shouldRemind: true, reason: 'retry-after-failure' }\n   - const lastSentMs = new Date(instance['ftm:reminderSummary']['ftm:lastSentAt']).getTime();\n   - const intervalMs = taskDef['ftm:reminderPolicy']['ftm:intervalSeconds'] * 1000;\n   - If currentMs - lastSentMs >= intervalMs: return { shouldRemind: true, reason: 'interval-elapsed' }\n   - Else: return { shouldRemind: false, reason: 'interval-not-elapsed' }\nNo I/O. No side effects.\n\nFile 2 — project/src/modules/completionProcessor.js:\nExport completionProcessor(instance, completedBy, completedByRole, completedAt) per SPEC §4.3.\nReturns a new TaskInstance (never mutates input).\n\nRules (SPEC §4.3):\n1. If instance['ftm:completionState']['ftm:status'] === 'completed':\n   Return { ...instance, 'ftm:warning': 'already-complete' } (spread-copy; no mutation)\n2. Otherwise return a new object (spread of instance) with:\n   - 'ftm:completionState': { ...instance['ftm:completionState'], 'ftm:status': 'completed', 'ftm:completedAt': completedAt, 'ftm:completedBy': completedBy, 'ftm:completedByRole': completedByRole }\n   - 'ftm:clientSequence': instance['ftm:clientSequence'] + 1\n   - 'ftm:updatedAt': { '@type': 'xsd:dateTime', '@value': completedAt }\n// TODO: SPEC §11 completedBy userId check and role-to-assignedTo cross-check deferred to Phase 4 application flow. CompletionProcessor is a pure function with no User store access. Operator decision I4."
+    },
+    "depends_on": ["urn:fnsr:task:p2-b-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-b-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-b-dev"},
+    "depends_on": ["urn:fnsr:task:p2-b-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-b-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-b-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p2-b-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p2-c-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/modules/scheduleComputer.js and project/src/entities/taskInstance.js. Report their exact export signatures and key logic. Also read SPEC §4.4 (TaskListComputer, lines 244-258) and §4.5 (RecurrenceMaterializer, lines 259-289) from project/family-task-manager-spec.md. Report all file paths and line ranges."
+    },
+    "depends_on": ["urn:fnsr:task:p2-b-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-c-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create two new module files. JavaScript ESM. No new dependencies. before: null for both.\n\nFile 1 — project/src/modules/taskListComputer.js:\nExport taskListComputer(instances, filter) per SPEC §4.4.\nReturns TaskInstance[] — filtered and sorted. Pure function; does not mutate input.\n\nfilter shape: { assignedTo?: string, status?: 'pending'|'completed', fromDate?: string, toDate?: string }\n\nRules (SPEC §4.4):\n1. Filter by assignedTo if present: keep instances where instance['ftm:assignedTo'] === filter.assignedTo\n2. Filter by status if present: keep instances where instance['ftm:completionState']['ftm:status'] === filter.status\n3. Filter by fromDate if present: keep instances where instance['ftm:dueAt']['@value'] >= filter.fromDate\n4. Filter by toDate if present: keep instances where instance['ftm:dueAt']['@value'] <= filter.toDate\n5. Sort by ftm:dueAt['@value'] ascending (string ISO-8601 comparison works correctly)\n6. Tiebreak for equal dueAt: pending before completed\n   (sort pending first: if a.dueAt === b.dueAt and a is pending and b is completed, a comes first)\n\nFile 2 — project/src/modules/recurrenceMaterializer.js:\nExport recurrenceMaterializer(taskDefs, existingInstances, currentTime, options) per SPEC §4.5.\nReturns { toCreate: TaskInstance[], skipped: number }. Pure function.\n\nimport { scheduleComputer } from './scheduleComputer.js';\n\noptions shape: { lookAheadSeconds?: number, catchUpPolicy?: 'all'|'current-only' }\nDefaults: lookAheadSeconds = 604800, catchUpPolicy = 'current-only'\n\nRules (SPEC §4.5):\n1. For each taskDef in taskDefs where taskDef['ftm:schedule']['ftm:scheduleType'] === 'recurring':\n   a. // FIXME: catchUpWindowSeconds not defined in SPEC §4.5 rule 1a — using 604800s (7 days) as operator-confirmed default (I9).\n      const catchUpWindowSeconds = options.catchUpWindowSeconds ?? 604800;\n      const lookAheadSeconds = options.lookAheadSeconds ?? 604800;\n      const windowStart = new Date(new Date(currentTime).getTime() - catchUpWindowSeconds * 1000).toISOString();\n      const candidates = scheduleComputer(taskDef, windowStart, { lookAheadSeconds: catchUpWindowSeconds + lookAheadSeconds });\n      // Handle invalid-rrule: if candidates['ftm:error'], skip this definition.\n   b. Deduplicate: remove any candidate whose dueAt matches an existing instance\n      (match by taskDef['@id'] === existingInstance['ftm:taskDefinition'] AND candidate dueAt === existingInstance['ftm:dueAt']['@value'])\n   c. If catchUpPolicy === 'current-only': further filter out candidates where dueAt < currentTime; increment skipped for each filtered.\n   d. Append remaining to toCreate.\n2. Return { toCreate, skipped }.\n\nNo I/O. No mutation of inputs."
+    },
+    "depends_on": ["urn:fnsr:task:p2-c-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-c-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-c-dev"},
+    "depends_on": ["urn:fnsr:task:p2-c-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-c-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-c-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p2-c-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p2-d-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read ALL Phase 2 module files: project/src/modules/scheduleComputer.js, project/src/modules/reminderEvaluator.js, project/src/modules/completionProcessor.js, project/src/modules/taskListComputer.js, project/src/modules/recurrenceMaterializer.js. Also read project/tests/phase1.test.js (first 30 lines for import style). Report exact export names and function signatures for each module."
+    },
+    "depends_on": ["urn:fnsr:task:p2-c-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-d-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create one new test file. JavaScript ESM. Use node:test. before: null.\n\nFile — project/tests/phase2.test.js:\nImport: import { test, describe } from 'node:test'; import assert from 'node:assert/strict';\nAll imports use relative paths from tests/.\n\nWrite tests covering ALL acceptance criteria from IMPLEMENTATION_PLAN tasks 2.1-2.5 plus §13 checklist items 1-7.\n\ndescribe('2.1 ScheduleComputer', () => {\n  test('one-time task with dueAt after referenceTime returns 1 instance')\n  test('one-time task with dueAt equal to referenceTime returns []')\n  test('one-time task with dueAt before referenceTime returns []')\n  test('recurring FREQ=DAILY with lookAheadSeconds 604800 returns 7 instances')\n  test('all recurring instances have dueAt > referenceTime and <= referenceTime + lookAheadSeconds')\n  test('default lookAheadSeconds is 604800 when options omitted')\n  test('invalid recurrenceRule returns [] with ftm:error invalid-rrule on array')\n  test('all returned instances have completionState.status pending and totalSent 0')\n  test('calling twice with same args returns same logical output (deterministic)')\n  // §13 item 1\n  test('instantiate TaskDefinition and pass to ScheduleComputer without network')\n  // §13 item 2\n  test('ScheduleComputer with recurring taskDef and referenceTime 4 days in past returns instances covering window; second call with same args is identical')\n});\n\ndescribe('2.2 ReminderEvaluator', () => {\n  test('completed instance returns shouldRemind false, reason already-complete')\n  test('dueAt after currentTime returns shouldRemind false, reason not-yet-due')\n  test('once mode totalSent 0 returns shouldRemind true, reason first-and-only')\n  test('once mode totalSent 1 returns shouldRemind false, reason once-sent')\n  test('persistent mode currentTime > dueAt + persistUntilSeconds returns false, persistence-window-expired')\n  test('persistent mode persistUntilSeconds absent currentTime = dueAt + 86401 returns false persistence-window-expired (default 86400)')\n  test('persistent mode persistUntilSeconds absent currentTime = dueAt + 86399 returns NOT persistence-window-expired')\n  test('persistent mode lastDeliveryStatus failed returns shouldRemind true, retry-after-failure')\n  test('persistent mode totalSent 0 returns shouldRemind true, initial-reminder')\n  test('persistent mode interval elapsed returns shouldRemind true, interval-elapsed')\n  test('persistent mode interval not elapsed returns shouldRemind false, interval-not-elapsed')\n  // §13 item 4\n  test('ReminderEvaluator with lastDeliveryStatus failed returns shouldRemind true reason retry-after-failure')\n});\n\ndescribe('2.3 CompletionProcessor', () => {\n  test('returns new object (reference inequality)')\n  test('output completionState.status is completed')\n  test('output completedAt equals argument')\n  test('output completedBy equals argument')\n  test('output completedByRole equals argument')\n  test('output clientSequence equals input + 1')\n  test('output updatedAt equals completedAt')\n  test('already-completed input returns unchanged instance with ftm:warning already-complete')\n  test('completedByRole parent is stored correctly')\n  // §13 item 5\n  test('parent completion passes all §11 structural invariants (completedByRole parent, clientSequence incremented)')\n  // §13 item 6 — validator rejects child with wrong completedBy\n  // Note: SPEC §11 user-store checks deferred to Phase 4. Test the structural contract only.\n  test('child completion with correct assignedTo passes structural validation')\n});\n\ndescribe('2.4 TaskListComputer', () => {\n  test('filter by assignedTo excludes other children')\n  test('filter by status pending excludes completed')\n  test('filter by status completed excludes pending')\n  test('filter by fromDate excludes earlier instances')\n  test('filter by toDate excludes later instances')\n  test('empty filter returns all instances')\n  test('default sort is dueAt ascending')\n  test('equal dueAt: pending before completed')\n  test('does not mutate input array')\n  // §13 item 7\n  test('render parent dashboard from TaskListComputer output only — no StateAdapter call')\n});\n\ndescribe('2.5 RecurrenceMaterializer', () => {\n  test('one recurring taskDef empty existingInstances returns toCreate with instances in look-ahead window')\n  test('deduplication: existing instance with matching taskDefinition and dueAt excluded from toCreate')\n  test('catchUpPolicy current-only: past missed occurrences excluded, skipped incremented')\n  test('catchUpPolicy current-only 3 missed: skipped === 3, toCreate contains only present/future')\n  test('all occurrences already exist: returns toCreate [] skipped 0')\n  test('does not mutate input arrays')\n  // §13 item 3\n  test('RecurrenceMaterializer with fixture taskDefs and instances returns deterministic result; second call identical')\n});\n\nHelper factories at top of file (not in describe blocks):\n- makeTaskDef(overrides): creates a one-time TaskDefinition with sensible defaults, merges overrides\n- makeRecurringTaskDef(overrides): creates a recurring TaskDefinition with FREQ=DAILY, recurrenceStart set to 8 days ago, merges overrides\n- makeInstance(overrides): creates a TaskInstance with sensible defaults, merges overrides\n\nUse concrete ISO-8601 strings for timestamps, e.g. '2026-05-22T10:00:00Z'.\nFor §13 item 6 (child completion validator test): since user-store checks are Phase 4 deferred, test only that completionProcessor does NOT throw and returns a structurally valid result for a child with matching assignedTo."
+    },
+    "depends_on": ["urn:fnsr:task:p2-d-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-d-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-d-dev"},
+    "depends_on": ["urn:fnsr:task:p2-d-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p2-d-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p2-d-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p2-d-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p2-test",
+    "agent": "test-runner",
+    "status": "ready",
+    "inputs": {
+      "cmd": "node --test project/tests/phase2.test.js"
+    },
+    "depends_on": ["urn:fnsr:task:p2-d-apply"],
+    "attempts": 0,
+    "history": []
+  }
+]

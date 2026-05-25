@@ -1,0 +1,341 @@
+[
+  {
+    "@id": "urn:fnsr:task:p3-i1-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/entities/taskDefinition.js, project/src/entities/taskInstance.js, project/src/entities/user.js. Report their exact export signatures and the ftm:clientSequence + ftm:updatedAt field shapes. Also read SPEC §5 and §5.1 (lines 292-340 of project/family-task-manager-spec.md) for StateAdapter and conflict-resolution requirements."
+    },
+    "depends_on": [],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i1-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create ONE new file. JavaScript ESM. No new dependencies. before: null.\n\nFile - project/src/adapters/state/inMemoryStateAdapter.js:\n\nThe canonical in-memory StateAdapter per SPEC §5 and §5.1. Pure JS (no TypeScript); interface is documented via JSDoc.\n\nAt the top of the file, JSDoc typedefs for the StateAdapter interface:\n  @typedef {Object} InstanceFilter\n    Optional fields: assignedTo, status ('pending'|'completed'), taskDefinitionId, fromDate (ISO-8601), toDate (ISO-8601)\n  @typedef {Object} StateAdapter\n    Methods: saveTaskDefinition(td) -> Promise<void>; getTaskDefinition(id) -> Promise<object|null>; listTaskDefinitions(filter?) -> Promise<object[]>; saveTaskInstance(ti) -> Promise<void>; getTaskInstance(id) -> Promise<object|null>; listTaskInstances(filter?) -> Promise<object[]>; saveUser(u) -> Promise<void>; getUser(id) -> Promise<object|null>; listUsers() -> Promise<object[]>\n\nExport function createInMemoryStateAdapter() that returns an object implementing the StateAdapter interface above. Internally uses three Map<string, object> instances (one each for taskDefinitions, taskInstances, users), keyed by @id.\n\nConflict resolution per §5.1 (operator decision I7: apply LWW for BOTH saveTaskDefinition and saveTaskInstance; ignore §3.2 'never mutated' clause; ftm:version is informational only):\n  Internal helper resolveConflict(existing, incoming):\n    1. If !existing: return incoming\n    2. Compare ftm:clientSequence. Higher wins.\n    3. If equal, compare ftm:updatedAt (the @value string; ISO-8601 strings compare correctly lexicographically). Later wins.\n    4. If both equal: incoming wins (idempotent re-save).\n  \n  Apply resolveConflict in saveTaskDefinition, saveTaskInstance, and saveUser. Add JSDoc note on saveUser explaining LWW also applies for consistency (SPEC §5.1 silent on User but interface symmetry).\n\nlistTaskDefinitions(filter): if filter.status present, return only entities where ftm:status === filter.status; else return all values.\nlistTaskInstances(filter): apply InstanceFilter — assignedTo, status (compare instance['ftm:completionState']['ftm:status']), taskDefinitionId (compare instance['ftm:taskDefinition']), fromDate / toDate (compare instance['ftm:dueAt']['@value']). Filters AND together.\nlistUsers(): return all values.\n\nAll methods return Promises (use async functions). State is process-local; not persisted across restarts (in-memory contract)."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i1-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i1-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i1-dev"},
+    "depends_on": ["urn:fnsr:task:p3-i1-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i1-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i1-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-i1-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-i2-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read SPEC §6 and §6.1 (lines 343-396 of project/family-task-manager-spec.md) for OrchestrationAdapter requirements and the tier table. Read project/src/adapters/state/inMemoryStateAdapter.js for the established adapter-export pattern (createX factory returning interface). Report file paths and line ranges."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i1-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i2-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create TWO new files. JavaScript ESM. No new dependencies. before: null for both.\n\nFile 1 - project/src/adapters/orchestration/tier0OrchestrationAdapter.js:\n\nJSDoc typedef at top for OrchestrationAdapter interface:\n  @typedef {Object} OrchestrationAdapter\n    scheduleAt(isoTimestamp, callback) -> string handle\n    scheduleInterval(intervalMs, callback) -> string handle\n    cancel(handle): void\n    onResume(currentTime): void\n\nExport function createTier0OrchestrationAdapter() returning the interface. Implementation:\n  Internal Map<string, {type: 'timeout'|'interval', nodeHandle: any}> keyed by string handle (use crypto.randomUUID()).\n  scheduleAt(iso, cb): compute delayMs = new Date(iso).getTime() - Date.now(); if delayMs <= 0 invoke cb on nextTick / queueMicrotask immediately; else setTimeout(cb, delayMs). Store the Node timeout handle. Return UUID handle.\n  scheduleInterval(ms, cb): setInterval(cb, ms). Store handle. Return UUID.\n  cancel(handle): look up entry; if type 'timeout' clearTimeout(nodeHandle); if 'interval' clearInterval(nodeHandle); delete map entry.\n  onResume(now): register the now timestamp on the adapter (no resume handlers in Tier 0 itself — the orchestration layer calls onResume; this is a no-op placeholder for future hooks). Document with JSDoc note that resume reconciliation is composed externally (SPEC §6.1).\n\nJSDoc on the adapter should state: 'Background throttling is a known limitation per SPEC §6.1 Tier 0 — JavaScript timers are unreliable when a browser tab or PWA is backgrounded.'\n\nFile 2 - project/src/adapters/orchestration/testOrchestrationAdapter.js:\n\nExport createTestOrchestrationAdapter() returning OrchestrationAdapter PLUS an extra tick(isoTimestamp) method.\nImplementation:\n  Internal arrays: timeouts = [{handle, fireAt: number ms, cb, fired: boolean}]; intervals = [{handle, intervalMs, lastFiredAt: number ms, cb, registered: number ms}].\n  Internal logicalTime = 0 (set to new Date(...).getTime() on first tick or scheduleAt; start at scheduleAt's reference if needed). Track currentLogicalMs.\n  scheduleAt(iso, cb): push timeout entry with fireAt = new Date(iso).getTime(); return handle.\n  scheduleInterval(ms, cb): push interval entry; registered = currentLogicalMs (or 0); lastFiredAt = registered; return handle.\n  cancel(handle): remove the entry from both arrays.\n  onResume(now): update currentLogicalMs = new Date(now).getTime() (informational; tick is the real driver).\n  tick(isoTimestamp): const targetMs = new Date(isoTimestamp).getTime();\n    For timeouts: filter timeouts where fireAt <= targetMs AND !fired; sort ascending by fireAt; for each, set fired=true and invoke cb.\n    For intervals: for each interval entry: compute how many intervals elapsed = Math.floor((targetMs - lastFiredAt) / intervalMs); fire that many times; update lastFiredAt += elapsed * intervalMs.\n    Update currentLogicalMs = targetMs.\n    NO real timers (setTimeout/setInterval) anywhere. Document this in JSDoc."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i2-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i2-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i2-dev"},
+    "depends_on": ["urn:fnsr:task:p3-i2-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i2-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i2-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-i2-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-i3-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read SPEC §7, §7.1, §7.2 (lines 400-455 of project/family-task-manager-spec.md) for NotificationAdapter, NotificationPayload, NotificationReceipt, and Tier 0 in-process delivery requirements. Report payload and receipt field shapes."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i2-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i3-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create TWO new files. JavaScript ESM. No new dependencies. before: null for both.\n\nFile 1 - project/src/adapters/notification/tier0NotificationAdapter.js:\n\nJSDoc typedefs at top:\n  @typedef {Object} NotificationPayload\n    recipientUserId: string; title: string; body: string; deepLinkUri: string; requestForegroundDisplay: boolean\n  @typedef {Object} NotificationReceipt\n    status: 'delivered'|'failed'|'deferred'; adapterTier: 0|1|2|3; externalId?: string\n  @typedef {Object} NotificationAdapter\n    send(payload) -> Promise<NotificationReceipt>\n\nimport { EventEmitter } from 'node:events';\n\nExport a module-level EventEmitter instance for Node: export const ftmEmitter = new EventEmitter();\n\nExport function createTier0NotificationAdapter() returning { send }.\nsend(payload):\n  - MUST NOT throw on internal error; wrap the body in try/catch and on any error return { status: 'failed', adapterTier: 0 }.\n  - Detect environment: const isBrowser = typeof window !== 'undefined' && typeof CustomEvent === 'function';\n  - If isBrowser: window.dispatchEvent(new CustomEvent('ftm:alert', { detail: payload }))\n  - Else (Node): ftmEmitter.emit('ftm:alert', payload)\n  - Return { status: 'delivered', adapterTier: 0 }\n  - requestForegroundDisplay flag: no additional behavior required at Tier 0 per SPEC §7.2 — just dispatch the event; document in JSDoc.\n\nFile 2 - project/src/adapters/notification/noopNotificationAdapter.js:\n\nExport function createNoopNotificationAdapter() returning { send }.\nsend(payload): immediately resolve with { status: 'delivered', adapterTier: 0 }. Do NOT dispatch any CustomEvent or EventEmitter event. JSDoc note: 'Used by tests that do not verify notification delivery; satisfies SPEC §13 item 9 (NotificationAdapter swap test).'"
+    },
+    "depends_on": ["urn:fnsr:task:p3-i3-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i3-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i3-dev"},
+    "depends_on": ["urn:fnsr:task:p3-i3-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i3-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i3-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-i3-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-i4-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/modules/scheduleComputer.js, reminderEvaluator.js, recurrenceMaterializer.js. Also read project/src/adapters/state/inMemoryStateAdapter.js for its method signatures, project/src/adapters/orchestration/tier0OrchestrationAdapter.js, and project/src/adapters/notification/tier0NotificationAdapter.js. Read SPEC §6.1 'Resume Reconciliation' and §8.5 'App Boot / Foreground Resume' (lines 390-396 and 514-530 of project/family-task-manager-spec.md). Report all export signatures."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i3-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i4-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create ONE new file. JavaScript ESM. No new dependencies. before: null.\n\nFile - project/src/modules/resumeReconciliation.js:\n\nimport { recurrenceMaterializer } from './recurrenceMaterializer.js';\nimport { reminderEvaluator } from './reminderEvaluator.js';\n\nExport async function resumeReconciliation({ stateAdapter, orchestrationAdapter, notificationAdapter, currentTime }) per SPEC §6.1 + §8.5.\n\nBehavior:\n1. Call orchestrationAdapter.onResume(currentTime) — informational.\n2. Load active recurring task definitions:\n   const allDefs = await stateAdapter.listTaskDefinitions({ status: 'active' });\n   const recurringDefs = allDefs.filter(d => d['ftm:schedule']['ftm:scheduleType'] === 'recurring');\n3. Load all task instances:\n   const allInstances = await stateAdapter.listTaskInstances();\n4. Call recurrenceMaterializer:\n   const { toCreate, skipped } = recurrenceMaterializer(recurringDefs, allInstances, currentTime);\n5. For each instance in toCreate:\n   await stateAdapter.saveTaskInstance(instance);\n   orchestrationAdapter.scheduleAt(instance['ftm:dueAt']['@value'], () => { /* placeholder reminder trigger; wired in Phase 4 */ });\n6. Re-evaluate all pending instances where dueAt <= currentTime:\n   const updatedInstances = await stateAdapter.listTaskInstances();\n   const pendingDue = updatedInstances.filter(i => i['ftm:completionState']['ftm:status'] === 'pending' && i['ftm:dueAt']['@value'] <= currentTime);\n   For each pending-due instance:\n     const def = await stateAdapter.getTaskDefinition(instance['ftm:taskDefinition']);\n     const verdict = reminderEvaluator(instance, def, currentTime);\n     if (verdict.shouldRemind) {\n       await notificationAdapter.send({ recipientUserId: instance['ftm:assignedTo'], title: def['ftm:title'], body: def['ftm:description'] ?? '', deepLinkUri: 'ftm://instance/' + instance['@id'].split(':').pop(), requestForegroundDisplay: true });\n     }\n7. Return { toCreate: toCreate.length, skipped };\n\nNo Phase 4 reminderSummary updates here (that flow lives in Phase 4 §8.2 reminder-trigger). Document this scoping in JSDoc."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i4-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i4-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i4-dev"},
+    "depends_on": ["urn:fnsr:task:p3-i4-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-i4-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-i4-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-i4-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-t1-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/adapters/state/inMemoryStateAdapter.js end-to-end. Report all exported function names, method names on the returned adapter, and the conflict-resolution logic. Also read the first 30 lines of project/tests/phase2-scheduleComputer.test.js for import style reference."
+    },
+    "depends_on": ["urn:fnsr:task:p3-i4-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t1-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create ONE new test file. JavaScript ESM, node:test. before: null.\n\nFile - project/tests/phase3-inMemoryStateAdapter.test.js:\nImports: import { test, describe } from 'node:test'; import assert from 'node:assert/strict'; import { createInMemoryStateAdapter } from '../src/adapters/state/inMemoryStateAdapter.js'; import { createTaskDefinition } from '../src/entities/taskDefinition.js'; import { createTaskInstance } from '../src/entities/taskInstance.js'; import { createUser } from '../src/entities/user.js';\n\nHelpers at top:\n- makeUser(role='child') -> createUser({ role, displayName: 'Test ' + role })\n- makeTaskDef(overrides) -> createTaskDefinition base + spread overrides for clientSequence/updatedAt scenarios\n\ndescribe('3.2 InMemoryStateAdapter - basic CRUD', () => {\n  test('saveTaskDefinition stores entity by @id')\n  test('getTaskDefinition returns null for unknown id')\n  test('listTaskDefinitions with status active returns only active entities')\n  test('saveTaskInstance + getTaskInstance round-trip')\n  test('listTaskInstances with empty filter returns all')\n  test('listTaskInstances with assignedTo filter excludes other children')\n  test('listTaskInstances with status filter (pending vs completed) works')\n  test('listTaskInstances with taskDefinitionId filter works')\n  test('listTaskInstances with fromDate / toDate filters work')\n  test('saveUser + getUser + listUsers round-trip')\n});\n\ndescribe('3.2 InMemoryStateAdapter - §5.1 LWW conflict resolution', () => {\n  test('higher clientSequence wins: save seq=1 then seq=2; get returns seq=2 entity')\n  test('lower clientSequence loses: save seq=2 then seq=1; get returns seq=2 entity (unchanged)')\n  test('equal clientSequence, later updatedAt wins: save seq=1 ts=A then seq=1 ts=B (B later); get returns B-version')\n  test('equal clientSequence, equal updatedAt: incoming wins (idempotent re-save)')\n  test('same LWW rules apply to saveTaskDefinition (operator I7: ignore §3.2 immutability; apply LWW symmetrically)')\n  test('same LWW rules apply to saveUser')\n});\n\n// SPEC §13 item 8\ndescribe('3.2 SPEC §13 item 8 - conflicting TaskInstance', () => {\n  test('save two conflicting TaskInstance @id with different clientSequence; getTaskInstance returns higher-sequence version')\n});\n\nUse concrete ISO-8601 timestamps. Override ftm:clientSequence and ftm:updatedAt['@value'] on the test entities (NOT via the factory params; mutate the returned object) to construct conflict scenarios."
+    },
+    "depends_on": ["urn:fnsr:task:p3-t1-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t1-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t1-dev"},
+    "depends_on": ["urn:fnsr:task:p3-t1-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t1-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t1-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-t1-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-t2-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/adapters/orchestration/tier0OrchestrationAdapter.js and project/src/adapters/orchestration/testOrchestrationAdapter.js end-to-end. Report all exported function names and method signatures on the returned adapters, including tick() on the test adapter."
+    },
+    "depends_on": ["urn:fnsr:task:p3-t1-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t2-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create TWO new test files. JavaScript ESM, node:test. before: null for both.\n\nFile 1 - project/tests/phase3-tier0OrchestrationAdapter.test.js:\nImports: import { test, describe } from 'node:test'; import assert from 'node:assert/strict'; import { createTier0OrchestrationAdapter } from '../src/adapters/orchestration/tier0OrchestrationAdapter.js';\n\ndescribe('3.5 Tier0 OrchestrationAdapter', () => {\n  test('scheduleAt returns a string handle')\n  test('scheduleAt with past timestamp fires callback quickly (within ~50ms via setTimeout(0))')\n  test('scheduleAt with future timestamp 100ms out fires after delay; callback fired exactly once')\n  test('scheduleInterval returns a string handle and fires callback at interval boundaries')\n  test('cancel(handle) prevents the callback from firing')\n  test('cancel(handle) on an interval prevents subsequent fires')\n  test('onResume(now) is callable without error')\n});\nUse setTimeout(resolve, ms) for waiting in async tests. Keep waits short (50-150ms).\n\nFile 2 - project/tests/phase3-testOrchestrationAdapter.test.js:\nImports: import { test, describe } from 'node:test'; import assert from 'node:assert/strict'; import { createTestOrchestrationAdapter } from '../src/adapters/orchestration/testOrchestrationAdapter.js';\n\ndescribe('3.6 Test OrchestrationAdapter', () => {\n  test('tick fires all scheduleAt callbacks whose target <= tick timestamp')\n  test('multiple scheduleAt callbacks fire in ascending timestamp order on tick')\n  test('each scheduleAt callback fires exactly once per tick (not repeatedly)')\n  test('scheduleAt callback NOT fired when tick timestamp is before target')\n  test('scheduleInterval fires once per elapsed interval when tick advances by interval (3 intervals -> 3 fires)')\n  test('cancel(handle) prevents callback from firing on subsequent tick')\n  test('does not use real timers: no setTimeout / setInterval anywhere (assert by elapsed wallclock < 10ms across many ticks)')\n});\nUse synchronous side-effect tracking (e.g., a counter array) instead of async waits."
+    },
+    "depends_on": ["urn:fnsr:task:p3-t2-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t2-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t2-dev"},
+    "depends_on": ["urn:fnsr:task:p3-t2-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t2-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t2-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-t2-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-t3-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/adapters/notification/tier0NotificationAdapter.js and project/src/adapters/notification/noopNotificationAdapter.js end-to-end. Report exported names, the EventEmitter export (ftmEmitter), and the environment-detection logic."
+    },
+    "depends_on": ["urn:fnsr:task:p3-t2-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t3-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create TWO new test files. JavaScript ESM, node:test. before: null for both.\n\nFile 1 - project/tests/phase3-tier0NotificationAdapter.test.js:\nImports: import { test, describe } from 'node:test'; import assert from 'node:assert/strict'; import { createTier0NotificationAdapter, ftmEmitter } from '../src/adapters/notification/tier0NotificationAdapter.js';\n\nHelper at top:\n- makePayload(overrides) -> { recipientUserId: 'u1', title: 't', body: 'b', deepLinkUri: 'ftm://instance/x', requestForegroundDisplay: true, ...overrides }\n\ndescribe('3.8 Tier0 NotificationAdapter (Node path)', () => {\n  test('send returns receipt with status delivered and adapterTier 0')\n  test('send emits ftm:alert on ftmEmitter with the payload as the event arg')\n  test('send never throws — internal error returns { status: failed, adapterTier: 0 } (use a deliberately-broken payload that breaks JSON.stringify if needed; otherwise assert by wrapping in try/catch over many calls)')\n  test('requestForegroundDisplay true: no extra behavior at Tier 0; event still dispatched')\n});\n\nFile 2 - project/tests/phase3-noopNotificationAdapter.test.js:\nImports: import { test, describe } from 'node:test'; import assert from 'node:assert/strict'; import { createNoopNotificationAdapter } from '../src/adapters/notification/noopNotificationAdapter.js'; import { ftmEmitter } from '../src/adapters/notification/tier0NotificationAdapter.js';\n\ndescribe('3.9 No-op NotificationAdapter', () => {\n  test('send returns receipt with status delivered and adapterTier 0')\n  test('send does NOT emit ftm:alert (register a listener on ftmEmitter; call send; assert listener never invoked)')\n});"
+    },
+    "depends_on": ["urn:fnsr:task:p3-t3-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t3-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t3-dev"},
+    "depends_on": ["urn:fnsr:task:p3-t3-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t3-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t3-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-t3-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-t4-recon",
+    "agent": "reconnaissance",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Read project/src/modules/resumeReconciliation.js end-to-end. Also read project/src/adapters/state/inMemoryStateAdapter.js, project/src/adapters/orchestration/testOrchestrationAdapter.js, project/src/adapters/notification/noopNotificationAdapter.js, project/src/entities/taskDefinition.js. Report the resumeReconciliation function signature and step ordering."
+    },
+    "depends_on": ["urn:fnsr:task:p3-t3-apply"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t4-dev",
+    "agent": "developer",
+    "status": "ready",
+    "inputs": {
+      "instruction": "Create ONE new test file. JavaScript ESM, node:test. before: null.\n\nFile - project/tests/phase3-resumeReconciliation.test.js:\nImports:\n  import { test, describe } from 'node:test';\n  import assert from 'node:assert/strict';\n  import { resumeReconciliation } from '../src/modules/resumeReconciliation.js';\n  import { createInMemoryStateAdapter } from '../src/adapters/state/inMemoryStateAdapter.js';\n  import { createTestOrchestrationAdapter } from '../src/adapters/orchestration/testOrchestrationAdapter.js';\n  import { createNoopNotificationAdapter } from '../src/adapters/notification/noopNotificationAdapter.js';\n  import { createTaskDefinition } from '../src/entities/taskDefinition.js';\n  import { createTaskInstance } from '../src/entities/taskInstance.js';\n\nHelpers at top:\n- async function setupFixture(): builds stateAdapter + orchestrationAdapter + notificationAdapter; populates with a fixture set; returns { state, orch, notif, sends: number, sendSpy }\n  sendSpy wraps noopNotificationAdapter.send to count calls (assign notif.send = wrapped fn that increments counter then calls original)\n- async function setupTwoRecurringDefs(): saves 2 recurring TaskDefinitions (FREQ=DAILY, recurrenceStart 8 days ago) via stateAdapter; returns the adapters\n\ndescribe('3.10 Resume Reconciliation', () => {\n  test('boot with 2 recurring defs and empty instances: stateAdapter.listTaskInstances returns >0 entries after resumeReconciliation; orchestrationAdapter has registered scheduleAt callbacks for each new instance')\n  test('skipped count is reported when catchUpPolicy defaults to current-only and past occurrences exist')\n  test('pending instances with dueAt <= currentTime get reminderEvaluator-driven notification send: 3 overdue pending instances => notif.send call count is 3')\n  test('completed instances do NOT trigger notification send')\n  test('not-yet-due pending instances do NOT trigger notification send')\n  test('returns { toCreate: number, skipped: number } shape')\n});\n\nUse currentTime '2026-05-22T10:00:00Z' as default. Pre-populate state with recurring defs whose recurrenceStart is 8 days prior so the catch-up path is exercised."
+    },
+    "depends_on": ["urn:fnsr:task:p3-t4-recon"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t4-repair",
+    "agent": "mojibake-repair",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t4-dev"},
+    "depends_on": ["urn:fnsr:task:p3-t4-dev"],
+    "attempts": 0,
+    "history": []
+  },
+  {
+    "@id": "urn:fnsr:task:p3-t4-apply",
+    "agent": "applier",
+    "status": "ready",
+    "inputs": {"source_task": "urn:fnsr:task:p3-t4-repair", "apply_root": "."},
+    "depends_on": ["urn:fnsr:task:p3-t4-repair"],
+    "attempts": 0,
+    "history": []
+  },
+
+  {
+    "@id": "urn:fnsr:task:p3-test-final",
+    "agent": "test-runner",
+    "status": "ready",
+    "inputs": {
+      "cmd": "node --test project/tests/phase3-inMemoryStateAdapter.test.js project/tests/phase3-tier0OrchestrationAdapter.test.js project/tests/phase3-testOrchestrationAdapter.test.js project/tests/phase3-tier0NotificationAdapter.test.js project/tests/phase3-noopNotificationAdapter.test.js project/tests/phase3-resumeReconciliation.test.js"
+    },
+    "depends_on": ["urn:fnsr:task:p3-t4-apply"],
+    "attempts": 0,
+    "history": []
+  }
+]

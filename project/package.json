@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/phase1.test.js"
+  },
+  "dependencies": {
+    "rrule": "^2.8.1"
+  }
+}
