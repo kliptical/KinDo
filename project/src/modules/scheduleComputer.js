@@ -1,5 +1,5 @@
-﻿import rrulePkg from 'rrule';
-const { RRule } = rrulePkg;
+﻿import * as rrulePkg from 'rrule';
+const RRule = rrulePkg.RRule ?? rrulePkg.default?.RRule;
 import { createTaskInstance } from '../entities/taskInstance.js';
 
 /**
