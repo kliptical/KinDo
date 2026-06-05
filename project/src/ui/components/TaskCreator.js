@@ -20,8 +20,12 @@ export default function TaskCreator({ ftm, identity, onCreated }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    // dueAt and recurrenceStart hold the raw datetime-local input string (yyyy-MM-ddTHH:mm).
+    // Convert to canonical ISO-8601 UTC here at submit time only.
+    const dueAtIso = dueAt ? new Date(dueAt).toISOString() : '';
+    const recurrenceStartIso = recurrenceStart ? new Date(recurrenceStart).toISOString() : null;
     // Construct a candidate TaskDefinition object for §11 validation (factory generates the @id/timestamps).
-    const params = { title, description, assignedTo, createdBy: identity.userId, dueAt, scheduleType, recurrenceRule: scheduleType === 'recurring' ? recurrenceRule : null, recurrenceStart: scheduleType === 'recurring' ? recurrenceStart : null, reminderMode, intervalSeconds: reminderMode === 'persistent' ? Number(intervalSeconds) : null, persistUntilSeconds: reminderMode === 'persistent' ? Number(persistUntilSeconds) : null };
+    const params = { title, description, assignedTo, createdBy: identity.userId, dueAt: dueAtIso, scheduleType, recurrenceRule: scheduleType === 'recurring' ? recurrenceRule : null, recurrenceStart: scheduleType === 'recurring' ? recurrenceStartIso : null, reminderMode, intervalSeconds: reminderMode === 'persistent' ? Number(intervalSeconds) : null, persistUntilSeconds: reminderMode === 'persistent' ? Number(persistUntilSeconds) : null };
     const candidate = createTaskDefinition(params);
     const result = validateTaskDefinition(candidate);
     if (!result.valid) { setErrors(result.errors); return; }
@@ -40,11 +44,11 @@ export default function TaskCreator({ ftm, identity, onCreated }) {
       <label>Title<input value=${title} onChange=${e => setTitle(e.target.value)} required /></label>
       <label>Description<textarea value=${description} onChange=${e => setDescription(e.target.value)} /></label>
       <label>Assigned to (child userId)<input value=${assignedTo} onChange=${e => setAssignedTo(e.target.value)} placeholder="urn:ftm:child:..." required /></label>
-      <label>Due at<input type="datetime-local" value=${dueAt} onChange=${e => setDueAt(new Date(e.target.value).toISOString())} required /></label>
+      <label>Due at<input type="datetime-local" value=${dueAt} onChange=${e => setDueAt(e.target.value)} required /></label>
       <label>Schedule<select value=${scheduleType} onChange=${e => setScheduleType(e.target.value)}><option value="one-time">One-time</option><option value="recurring">Recurring</option></select></label>
       ${scheduleType === 'recurring' ? html`
         <label>Recurrence rule (RRULE)<input value=${recurrenceRule} onChange=${e => setRecurrenceRule(e.target.value)} placeholder="FREQ=DAILY" /></label>
-        <label>Recurrence start<input type="datetime-local" value=${recurrenceStart} onChange=${e => setRecurrenceStart(new Date(e.target.value).toISOString())} /></label>
+        <label>Recurrence start<input type="datetime-local" value=${recurrenceStart} onChange=${e => setRecurrenceStart(e.target.value)} /></label>
       ` : null}
       <label>Reminder mode<select value=${reminderMode} onChange=${e => setReminderMode(e.target.value)}><option value="once">Once</option><option value="persistent">Persistent</option></select></label>
       ${reminderMode === 'persistent' ? html`
