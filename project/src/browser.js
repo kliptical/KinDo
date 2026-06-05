@@ -4,7 +4,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './ui/App.js';
-import { createInMemoryStateAdapter } from './adapters/state/inMemoryStateAdapter.js';
+import { createLocalStorageStateAdapter } from './adapters/state/localStorageStateAdapter.js';
 import { createTier0OrchestrationAdapter } from './adapters/orchestration/tier0OrchestrationAdapter.js';
 import { createTier0NotificationAdapter } from './adapters/notification/tier0NotificationAdapter.js';
 import { createUser } from './entities/user.js';
@@ -29,7 +29,7 @@ import { resolveDeepLink } from './routing/deepLink.js';
  * @returns {Promise<{stateAdapter: Object, orchestrationAdapter: Object, notificationAdapter: Object}>}
  */
 export async function createBrowserApp() {
-  const stateAdapter = createInMemoryStateAdapter();
+  const stateAdapter = createLocalStorageStateAdapter();
   const orchestrationAdapter = createTier0OrchestrationAdapter();
   const notificationAdapter = createTier0NotificationAdapter();
   return { stateAdapter, orchestrationAdapter, notificationAdapter };
