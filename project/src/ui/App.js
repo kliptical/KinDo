@@ -9,6 +9,7 @@ import MyTasks from './components/MyTasks.js';
 import TaskDetailChild from './components/TaskDetailChild.js';
 import AlertModal from './components/AlertModal.js';
 import PlatformDisclosure from './components/PlatformDisclosure.js';
+import UserManager from './components/UserManager.js';
 
 export default function App({ ftm }) {
   // ftm: the createBrowserApp() result with { stateAdapter, orchestrationAdapter, notificationAdapter }
@@ -49,6 +50,7 @@ function renderRoute({ route, identity, ftm }) {
   }
   if (route.view === 'parent-dashboard' && identity.role === 'parent') return html`<${ParentDashboard} ftm=${ftm} identity=${identity} />`;
   if (route.view === 'parent-create' && identity.role === 'parent') return html`<${TaskCreator} ftm=${ftm} identity=${identity} onCreated=${() => { window.location.hash = '#/parent/dashboard'; }} />`;
+  if (route.view === 'parent-users' && identity.role === 'parent') return html`<${UserManager} ftm=${ftm} />`;
   if (route.view === 'parent-instance' && identity.role === 'parent') return html`<${TaskDetailParent} ftm=${ftm} instanceId=${route.params.id} />`;
   if (route.view === 'child-tasks' && identity.role === 'child') return html`<${MyTasks} ftm=${ftm} identity=${identity} />`;
   if (route.view === 'child-instance' && identity.role === 'child') return html`<${TaskDetailChild} ftm=${ftm} identity=${identity} instanceId=${route.params.id} />`;

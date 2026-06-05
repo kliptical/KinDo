@@ -372,6 +372,62 @@ form button[type="submit"]:disabled {
   cursor: not-allowed;
 }
 
+/* user manager */
+.user-manager .user-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-manager .user-list li {
+  background: var(--ftm-surface);
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  padding: 0.625rem 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.user-manager .user-name {
+  font-weight: 500;
+}
+
+.user-manager .user-id {
+  font-size: 0.75rem;
+  color: var(--ftm-muted);
+  background: #f3f4f6;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-manager .user-list li button {
+  background: white;
+  color: var(--ftm-primary);
+  border: 1px solid var(--ftm-primary);
+  border-radius: var(--ftm-radius);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.user-manager .user-list li button:hover {
+  background: var(--ftm-primary);
+  color: white;
+}
+
+.dashboard-actions a + a::before {
+  content: " ";
+}
+
 /* responsive */
 @media (max-width: 480px) {
   .app {

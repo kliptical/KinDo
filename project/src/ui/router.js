@@ -43,6 +43,9 @@ export function parseRoute(hashPath) {
     if (segs.length === 2 && segs[1] === 'create') {
       return { view: 'parent-create', params: {} };
     }
+    if (segs.length === 2 && segs[1] === 'users') {
+      return { view: 'parent-users', params: {} };
+    }
     if (segs.length === 3 && segs[1] === 'instance' && segs[2]) {
       return { view: 'parent-instance', params: { id: segs[2] } };
     }

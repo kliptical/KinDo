@@ -48,7 +48,7 @@ export default function ParentDashboard({ ftm, identity }) {
       ${error ? html`<p className="error">${error}</p>` : null}
       <section><h3>Pending (${pending.length})</h3><ul>${pending.map(renderInstance)}</ul></section>
       <section><h3>Completed (${completed.length})</h3><ul>${completed.map(renderInstance)}</ul></section>
-      <p><a href="#/parent/create">+ Create Task</a></p>
+      <p className="dashboard-actions"><a href="#/parent/create">+ Create Task</a> · <a href="#/parent/users">Manage family members</a></p>
     </div>
   `;
 }

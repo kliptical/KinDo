@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { html } from 'htm/react';
 import { parentCreatesTask } from '../../flows/parentCreatesTask.js';
 import { validateTaskDefinition } from '../../validation/validateTaskDefinition.js';
@@ -34,6 +34,14 @@ export default function TaskCreator({ ftm, identity, onCreated }) {
   const [persistUntilSeconds, setPersistUntilSeconds] = useState(86400); // default per SPEC §10
   const [errors, setErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [children, setChildren] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      const all = await ftm.stateAdapter.listUsers();
+      setChildren(all.filter(u => u['ftm:role'] === 'child'));
+    })();
+  }, [ftm]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -60,7 +68,14 @@ export default function TaskCreator({ ftm, identity, onCreated }) {
       ${errors.length > 0 ? html`<ul className="errors">${errors.map(e => html`<li key=${e}>${e}</li>`)}</ul>` : null}
       <label>Title<input value=${title} onChange=${e => setTitle(e.target.value)} required /></label>
       <label>Description<textarea value=${description} onChange=${e => setDescription(e.target.value)} /></label>
-      <label>Assigned to (child userId)<input value=${assignedTo} onChange=${e => setAssignedTo(e.target.value)} placeholder="urn:ftm:child:..." required /></label>
+      ${children.length === 0
+        ? html`<p className="error">No children yet. <a href="#/parent/users">Add a family member</a> before creating a task.</p>`
+        : html`<label>Assigned to
+            <select value=${assignedTo} onChange=${e => setAssignedTo(e.target.value)} required>
+              <option value="">-- pick a child --</option>
+              ${children.map(c => html`<option key=${c['@id']} value=${c['@id']}>${c['ftm:displayName']}</option>`)}
+            </select>
+          </label>`}
       <label>Due at<input type="datetime-local" value=${toDatetimeLocal(dueAt)} onChange=${e => setDueAt(e.target.value)} required /></label>
       <label>Schedule<select value=${scheduleType} onChange=${e => setScheduleType(e.target.value)}><option value="one-time">One-time</option><option value="recurring">Recurring</option></select></label>
       ${scheduleType === 'recurring' ? html`
