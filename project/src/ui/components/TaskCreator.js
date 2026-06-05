@@ -4,6 +4,23 @@ import { parentCreatesTask } from '../../flows/parentCreatesTask.js';
 import { validateTaskDefinition } from '../../validation/validateTaskDefinition.js';
 import { createTaskDefinition } from '../../entities/taskDefinition.js';
 
+// Coerce any stored datetime value to the yyyy-MM-ddTHH:mm format that
+// <input type="datetime-local"> accepts. Handles: native picker output
+// (already yyyy-MM-ddTHH:mm), ISO-with-Z strings (parses + formats local),
+// and empty/null.
+function toDatetimeLocal(v) {
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(v)) {
+    // already datetime-local-compatible; truncate any seconds the browser added
+    return v.slice(0, 16);
+  }
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '';
+  // Format to local timezone yyyy-MM-ddTHH:mm
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function TaskCreator({ ftm, identity, onCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -44,11 +61,11 @@ export default function TaskCreator({ ftm, identity, onCreated }) {
       <label>Title<input value=${title} onChange=${e => setTitle(e.target.value)} required /></label>
       <label>Description<textarea value=${description} onChange=${e => setDescription(e.target.value)} /></label>
       <label>Assigned to (child userId)<input value=${assignedTo} onChange=${e => setAssignedTo(e.target.value)} placeholder="urn:ftm:child:..." required /></label>
-      <label>Due at<input type="datetime-local" value=${dueAt} onChange=${e => setDueAt(e.target.value)} required /></label>
+      <label>Due at<input type="datetime-local" value=${toDatetimeLocal(dueAt)} onChange=${e => setDueAt(e.target.value)} required /></label>
       <label>Schedule<select value=${scheduleType} onChange=${e => setScheduleType(e.target.value)}><option value="one-time">One-time</option><option value="recurring">Recurring</option></select></label>
       ${scheduleType === 'recurring' ? html`
         <label>Recurrence rule (RRULE)<input value=${recurrenceRule} onChange=${e => setRecurrenceRule(e.target.value)} placeholder="FREQ=DAILY" /></label>
-        <label>Recurrence start<input type="datetime-local" value=${recurrenceStart} onChange=${e => setRecurrenceStart(e.target.value)} /></label>
+        <label>Recurrence start<input type="datetime-local" value=${toDatetimeLocal(recurrenceStart)} onChange=${e => setRecurrenceStart(e.target.value)} /></label>
       ` : null}
       <label>Reminder mode<select value=${reminderMode} onChange=${e => setReminderMode(e.target.value)}><option value="once">Once</option><option value="persistent">Persistent</option></select></label>
       ${reminderMode === 'persistent' ? html`
