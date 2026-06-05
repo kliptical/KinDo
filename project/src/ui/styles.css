@@ -279,6 +279,69 @@ form button[type="submit"]:disabled {
   flex-wrap: wrap;
 }
 
+.parent-dashboard .task-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.parent-dashboard .task-title {
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.parent-dashboard .task-assignee {
+  font-size: 0.8125rem;
+  color: var(--ftm-muted);
+}
+
+.parent-dashboard .task-due {
+  font-size: 0.8125rem;
+  color: var(--ftm-muted);
+}
+
+.parent-dashboard .task-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.parent-dashboard .dashboard-filter {
+  background: var(--ftm-surface);
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.parent-dashboard .dashboard-filter label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ftm-muted);
+  font-weight: 500;
+}
+
+.parent-dashboard .dashboard-filter select {
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  background: white;
+  color: var(--ftm-text);
+}
+
+.empty {
+  color: var(--ftm-muted);
+  font-style: italic;
+  margin: 0;
+}
+
 .parent-dashboard li a,
 .my-tasks li a {
   font-weight: 500;
