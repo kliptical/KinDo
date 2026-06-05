@@ -17,3 +17,11 @@ fnsr_test.pid
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Node — used by project/ subject project
+project/node_modules/
+
+# Chain JSON scratch files (operator-side scratch per Orchestrator guide §3)
+phase*-chains.json
+phase*-recovery-chains.json
+_tmp_*.py
