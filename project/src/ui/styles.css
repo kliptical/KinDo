@@ -1,0 +1,384 @@
+/* Family Task Manager — minimal modern stylesheet */
+
+:root {
+  --ftm-bg: #fafafa;
+  --ftm-surface: #ffffff;
+  --ftm-border: #e5e7eb;
+  --ftm-text: #111827;
+  --ftm-muted: #6b7280;
+  --ftm-primary: #2563eb;
+  --ftm-primary-hover: #1d4ed8;
+  --ftm-danger: #dc2626;
+  --ftm-success: #059669;
+  --ftm-warn: #d97706;
+  --ftm-radius: 6px;
+  --ftm-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ftm-bg);
+  color: var(--ftm-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.app > header {
+  border-bottom: 1px solid var(--ftm-border);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.app > header h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.app > header p {
+  margin: 0;
+  color: var(--ftm-muted);
+  font-size: 0.875rem;
+}
+
+.app > main {
+  display: block;
+}
+
+.app h2 {
+  font-size: 1.25rem;
+  margin: 0 0 1rem;
+}
+
+.app h3 {
+  font-size: 1rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--ftm-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.app a {
+  color: var(--ftm-primary);
+  text-decoration: none;
+}
+
+.app a:hover {
+  text-decoration: underline;
+}
+
+/* identity prompt */
+.identity-prompt {
+  background: var(--ftm-surface);
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  padding: 1.5rem;
+  margin: 2rem auto;
+  max-width: 480px;
+  text-align: center;
+}
+
+/* platform disclosure banner */
+.ftm-platform-disclosure {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: var(--ftm-radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ftm-platform-disclosure p {
+  margin: 0;
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.ftm-platform-disclosure button {
+  background: var(--ftm-warn);
+  color: white;
+  border: none;
+  border-radius: var(--ftm-radius);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ftm-platform-disclosure button:hover {
+  background: #b45309;
+}
+
+/* alert modal */
+.ftm-alert-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.ftm-alert-modal-content {
+  background: var(--ftm-surface);
+  border-radius: var(--ftm-radius);
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--ftm-shadow);
+}
+
+.ftm-alert-modal-content h2 {
+  margin: 0 0 0.5rem;
+}
+
+.ftm-alert-modal-content p {
+  margin: 0 0 1rem;
+  color: var(--ftm-muted);
+}
+
+.ftm-alert-modal-content a {
+  display: inline-block;
+  margin-right: 1rem;
+}
+
+.ftm-alert-modal-content button {
+  background: var(--ftm-primary);
+  color: white;
+  border: none;
+  border-radius: var(--ftm-radius);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.ftm-alert-modal-content button:hover {
+  background: var(--ftm-primary-hover);
+}
+
+/* forms — TaskCreator and similar */
+form {
+  background: var(--ftm-surface);
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ftm-muted);
+}
+
+form input,
+form select,
+form textarea {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  background: white;
+  color: var(--ftm-text);
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+  outline: 2px solid var(--ftm-primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+form textarea {
+  min-height: 4rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+form button[type="submit"] {
+  background: var(--ftm-primary);
+  color: white;
+  border: none;
+  border-radius: var(--ftm-radius);
+  padding: 0.625rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+form button[type="submit"]:hover:not(:disabled) {
+  background: var(--ftm-primary-hover);
+}
+
+form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* errors list inside forms */
+.errors {
+  list-style: none;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: var(--ftm-radius);
+  color: var(--ftm-danger);
+  font-size: 0.875rem;
+}
+
+.errors li + li {
+  margin-top: 0.25rem;
+}
+
+/* parent dashboard / my-tasks list cards */
+.parent-dashboard section,
+.my-tasks {
+  margin-bottom: 1.5rem;
+}
+
+.parent-dashboard ul,
+.my-tasks ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.parent-dashboard li,
+.my-tasks li {
+  background: var(--ftm-surface);
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.parent-dashboard li a,
+.my-tasks li a {
+  font-weight: 500;
+}
+
+.parent-dashboard li button {
+  background: white;
+  color: var(--ftm-primary);
+  border: 1px solid var(--ftm-primary);
+  border-radius: var(--ftm-radius);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.parent-dashboard li button:hover {
+  background: var(--ftm-primary);
+  color: white;
+}
+
+/* badges */
+.badge {
+  display: inline-block;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* error text (different from .errors list) */
+.error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: var(--ftm-danger);
+  border-radius: var(--ftm-radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* task detail views */
+.task-detail-parent,
+.task-detail-child {
+  background: var(--ftm-surface);
+  border: 1px solid var(--ftm-border);
+  border-radius: var(--ftm-radius);
+  padding: 1.5rem;
+}
+
+.task-detail-parent h2,
+.task-detail-child h2 {
+  word-break: break-all;
+}
+
+.task-detail-parent p,
+.task-detail-child p {
+  margin: 0.5rem 0;
+}
+
+.task-detail-parent h3 {
+  margin-top: 1.5rem;
+}
+
+.task-detail-parent ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.task-detail-child button {
+  background: var(--ftm-success);
+  color: white;
+  border: none;
+  border-radius: var(--ftm-radius);
+  padding: 0.625rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.task-detail-child button:hover:not(:disabled) {
+  background: #047857;
+}
+
+.task-detail-child button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* responsive */
+@media (max-width: 480px) {
+  .app {
+    padding: 1rem 0.75rem 3rem;
+  }
+  .ftm-platform-disclosure {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
